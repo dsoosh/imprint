@@ -1,6 +1,8 @@
 import inspect
+import logging
 import re
 from collections import defaultdict, OrderedDict, Iterable
+from pathlib import Path
 from typing import List, Dict, Tuple
 
 from _pytest.mark import Mark
@@ -12,12 +14,16 @@ import pytest
 class Collector:
     items = []
 
+    def __init__(self, path: str):
+        self.path = Path(path)
+
     def pytest_collection_modifyitems(self, items):
-        self.items = items
+        self.items = list(filter(lambda item: self.path in Path(item.location[0]).parents, items))
+        logging.info(f"collected {len(items)} under {self.path}")
 
 
 def assign_marks_to_tests(marks: Dict[str, List[Mark]]):
-    collector = Collector()
+    collector = Collector(".")
     pytest.main(args=[".", "--collect-only"], plugins=[collector])
 
     marks_for_parametrized_test = defaultdict(list)
@@ -62,7 +68,6 @@ def decorate_single(items: Dict[Function, List[Mark]]):
         replace = src.replace(funcsource, decorated)
 
         with open(sourcefile, "w") as source:
-            print(replace)
             source.write(replace)
 
 
